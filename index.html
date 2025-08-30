@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Reward Site</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --bg-alt: #0f1218;
+      --text: #e9edf1;
+      --muted: #a8b0bb;
+      --primary: #6aa7ff;
+      --primary-2: #8ad0ff;
+      --card: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.12);
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --radius: 14px;
+      --maxw: 1200px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f8fb;
+        --bg-alt: #ffffff;
+        --text: #0c1220;
+        --muted: #495365;
+        --card: #fff;
+        --border: #e6e9ef;
+        --shadow: 0 8px 24px rgba(18, 21, 31, 0.08);
+      }
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: auto;
+    }
+
+    .dashboard {
+      width: 95%;
+      max-width: var(--maxw);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin: 0;
+      color: var(--primary);
+    }
+
+    .cards {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .card {
+      flex: 1 1 200px;
+      min-width: 200px;
+      max-width: 300px;
+      background: var(--bg-alt);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid var(--border);
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      color: var(--muted);
+    }
+
+    .card .value {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    /* Action card */
+    .action-card {
+      background: var(--bg-alt);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 25px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .action-card button {
+      flex: 1 1 140px;
+      max-width: 200px;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+      box-shadow: var(--shadow);
+      background: var(--card);
+      color: var(--text);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: #07111f;
+    }
+
+    .login-btn {
+      border: 1px solid var(--primary);
+    }
+
+    .logout-btn {
+      border: 1px solid #e81123;
+      color: #e81123;
+    }
+
+    .redeem-btn {
+      border: 1px solid var(--primary);
+    }
+
+    .watch-btn {
+      border: 1px solid var(--muted);
+    }
+
+    @media (max-width: 768px) {
+      .cards {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .action-card {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .action-card button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <h1>Robux Reward Website</h1>
+
+    <div class="cards">
+      <div class="card">
+        <h2>Points</h2>
+        <div class="value" id="points">0</div>
+      </div>
+      <div class="card">
+        <h2>Ads Watched Today</h2>
+        <div class="value" id="adsWatched">0/20</div>
+      </div>
+    </div>
+
+    <div class="action-card">
+      <button class="login-btn" onclick="login()">Login with Google</button>
+      <button class="logout-btn" id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
+      <button class="redeem-btn" onclick="redeem()">Redeem 6000 points for 400 Robux</button>
+      <button class="watch-btn" onclick="watchAd()">Watch Ad</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDeLF7Nbpl37V7e8aIJhpkQpPdmSBV8mZ4",
+        authDomain: "redeem-web-f3285.firebaseapp.com",
+        projectId: "redeem-web-f3285",
+        storageBucket: "redeem-web-f3285.firebasestorage.app",
+        messagingSenderId: "247185741008",
+        appId: "1:247185741008:web:9f9fb1ff645357de423ad5",
+        measurementId: "G-CDWYMWJX2J"
+      };
+
+      
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+
+    async function login() {
+      const provider = new GoogleAuthProvider();
+      try {
+        const result = await signInWithPopup(auth, provider);
+        currentUser = result.user;
+
+        const ref = doc(db, "users", currentUser.uid);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          await setDoc(ref, {
+            email: currentUser.email,
+            name: currentUser.displayName,
+            points: 0,
+            adsWatchedToday: 0,
+            lastAdDate: new Date().toDateString()
+          });
+        }
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    }
+
+    function logout() {
+      signOut(auth);
+    }
+
+    async function loadUser() {
+      if (!currentUser) return;
+      const ref = doc(db, "users", currentUser.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      document.getElementById("points").innerText = data.points;
+      document.getElementById("adsWatched").innerText = data.adsWatchedToday + "/20";
+    }
+
+    async function watchAd() {
+      if (!currentUser) return alert("Login first");
+
+      const adWindow = window.open("", "_blank", "width=500,height=400");
+      adWindow.document.write(`
+        <h2 style="text-align:center;margin-top:50px;">Your Ad</h2>
+        <p style="text-align:center;">Watch for 5 seconds to earn points...</p>
+        <div style="text-align:center;margin-top:30px;">
+          <button id="skipBtn" disabled style="padding:10px 20px;">Skip</button>
+        </div>
+        <script>
+          setTimeout(() => {
+            document.getElementById('skipBtn').disabled = false;
+          }, 5000);
+          document.getElementById('skipBtn').onclick = () => {
+            window.opener.addPoints();
+            window.close();
+          }
+        <\/script>
+      `);
+    }
+
+    async function addPoints() {
+      const ref = doc(db, "users", currentUser.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const today = new Date().toDateString();
+      let adsWatched = data.adsWatchedToday;
+
+      if (data.lastAdDate !== today) {
+        adsWatched = 0;
+      }
+
+      if (adsWatched >= 20) {
+        alert("Daily limit reached!");
+        return;
+      }
+
+      adsWatched++;
+      const points = data.points + 10;
+
+      await updateDoc(ref, { points: points, adsWatchedToday: adsWatched, lastAdDate: today });
+      loadUser();
+      alert("You earned 10 points!");
+    }
+
+    async function redeem() {
+      if (!currentUser) return alert("Login first");
+      const ref = doc(db, "users", currentUser.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.points < 6000) return alert("Not enough points.");
+      await updateDoc(ref, { points: data.points - 6000 });
+      loadUser();
+      alert("You redeemed 400 Robux!");
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      const loginBtn = document.querySelector(".login-btn");
+      const logoutBtn = document.getElementById("logoutBtn");
+
+      if (user) {
+        currentUser = user;
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        loadUser();
+      } else {
+        currentUser = null;
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        document.getElementById("points").innerText = 0;
+        document.getElementById("adsWatched").innerText = "0/20";
+      }
+    });
+
+    window.login = login;
+    window.logout = logout;
+    window.watchAd = watchAd;
+    window.addPoints = addPoints;
+    window.redeem = redeem;
+  </script>
+</body>
+
+</html>
